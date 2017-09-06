@@ -7,7 +7,7 @@
 // Questions/comments to: paulweaver@paulweaver.org
 //
 
-#define VERSTRING "V1.0RC14"
+#define VERSTRING "V1.0RC15"
 
 #include <assert.h>
 #include <ctype.h>
