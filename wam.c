@@ -1583,9 +1583,7 @@ void display_intro(int moles, int gametime) {
             case 'I': {
                 int page = 0;
                 while (! playselected) {
-                    int linenum;
-                    linenum = (*intropages[page])(page);
-
+                    (*intropages[page])(page);
                     key = waitforkey(NULL);
                     switch (toupper(key)) {
                         case 'N': { // Next page
