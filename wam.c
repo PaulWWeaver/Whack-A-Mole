@@ -7,7 +7,7 @@
 // Questions/comments to: paulweaver@paulweaver.org
 //
 
-#define VERSTRING "V1.0RC14"
+#define VERSTRING "V1.0RC15"
 
 #include <assert.h>
 #include <ctype.h>
@@ -1583,9 +1583,7 @@ void display_intro(int moles, int gametime) {
             case 'I': {
                 int page = 0;
                 while (! playselected) {
-                    int linenum;
-                    linenum = (*intropages[page])(page);
-
+                    (*intropages[page])(page);
                     key = waitforkey(NULL);
                     switch (toupper(key)) {
                         case 'N': { // Next page
