@@ -7,5 +7,5 @@ install: Whack-A-Mole
 	cp Whack-A-Mole /usr/bin
 
 debug:
-	gcc -g -O0 -pthread -Wall -lrt -lncurses -lefence wam.c
+	gcc -g -O0 -pthread -Ddebug -D_GNU_SOURCE -Wall -lrt -lncurses -lefence wam.c
 
