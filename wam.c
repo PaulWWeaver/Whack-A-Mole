@@ -7,7 +7,7 @@
 // Questions/comments to: paulweaver@paulweaver.org
 //
 
-#define VERSTRING "V1.0RC15"
+#define VERSTRING "V1.0RC16"
 
 #include <assert.h>
 #include <ctype.h>
@@ -152,7 +152,7 @@ enum GameMode { BASEGAME, TIMEDGAME };  // GameMode unimplemented. Only BASEGAME
                 // BASEGAME = Fixed number of moles fit into a target time.
                 // TIMEDGAME = Unlimited moles in fixed amount of time.
 
-enum AnimationType { ANIMHIDING, ANIMPOPUP, ANIMWHACKED, ANIMESCAPED, ANIMMISFIRE, ANIMMISFIRESCARED, ANIMHIDESCARED, ANIMUPSCARED, SPLASHPOPUP, INSTRPOPUP, INSTRSCARED};
+enum AnimationType { ANIMHIDING, ANIMPOPUP, ANIMWHACKED, ANIMESCAPED, ANIMMISFIRE, ANIMMISFIRESCARED, ANIMUPSCARED, SPLASHPOPUP, INSTRPOPUP, INSTRSCARED};
                 // ANIMHIDING = Mole hiding in hole, but not popped up yet.
                 //              (Ears will periodically bob up and down).
                 // ANIMPOPUP = Mole Quickly pops up and slowly drops until whacked.
@@ -160,7 +160,6 @@ enum AnimationType { ANIMHIDING, ANIMPOPUP, ANIMWHACKED, ANIMESCAPED, ANIMMISFIR
                 // ANIMESCAPED = Displays escaped panel, then score panel.
                 // ANIMMISFIRE = Displays misfire panel.
                 // ANIMMISFIRESCARED = Displays misfire panel, then escaped panel.
-                // ANIMHIDESCARED = Displays scared panel, escape panel
                 // ANIMUPSCARED = Displays Scared panel, escape panel, then score panel.
                 // SPLASHPOPUP = Mole pops up, but never drops. (Used by splash page).
                 // INSTRPOPUP = Mole pops up, drops, and loops. (Used by instruction page).
@@ -292,6 +291,9 @@ volatile int kbthread_running = 0;       // input_thread status
 volatile int display_thread_running = 0; // display_thread status
 const struct timespec one_msec = {0, MSEC};
 int molesremaining = -1;  // Global count for main display
+#if defined(debug)
+int threadsn = 0;
+#endif
 
 //===========
 // Animations
@@ -838,8 +840,8 @@ void set_mole_status(struct MoleCommRecord *p, enum MoleStatus newstatus) {
 void *mole_thread(void *arg) {
     struct MoleCommRecord *p = (struct MoleCommRecord *)arg;
 
- #if defined(debug)
-    pthread_setname_np(pthread_self(), "Mole");
+ #if defined(debug) && defined(_GNU_SOURCE)
+    pthread_setname_np(pthread_self(), "WAM-Mole");
  #endif
 
     // Varying delay so they don't all start at once.
@@ -984,7 +986,7 @@ void *mole_thread(void *arg) {
     if (p->molestatus == SCARED) {
         for (;;) {  // wait for SCARED animation to signal it has completed (synccount == syncpoints)
             lock_molecomm();
-            if (p->animspec.animationtype == ANIMMISFIRESCARED || p->animspec.animationtype ==  ANIMHIDESCARED || p->animspec.animationtype == ANIMUPSCARED) {
+            if (p->animspec.animationtype == ANIMMISFIRESCARED || p->animspec.animationtype == ANIMUPSCARED) {
                 if (p->animspec.syncpoints > 0 && p->animspec.synccount == p->animspec.syncpoints) {
                     unlock_molecomm();
                     break;
@@ -2082,8 +2084,8 @@ void display_empty_playfield(enum GameMode gamemode, int elements, int holes, ch
 void *animation_thread(void *arg) {
     struct AnimationSpec *aspec = (struct AnimationSpec *)arg;
     struct timespec sleeptime = {0, 0}; 
- #if defined(debug)
-    pthread_setname_np(pthread_self(), "Animation");
+ #if defined(debug) && defined(_GNU_SOURCE)
+    pthread_setname_np(pthread_self(), "WAM-Animation");
  #endif
 
     switch (aspec->animationtype) {
@@ -2098,8 +2100,8 @@ void *animation_thread(void *arg) {
             //                     Above steps repead until duration expires.
             //                     A duration of -1 indicates "run forever".
 
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationHiding");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-Hiding");
  #endif
             lock_molecomm();
             aspec->synccount = 1;  // Indicate animation running
@@ -2184,8 +2186,8 @@ void *animation_thread(void *arg) {
             //                     For SPLASHPOPUP, only part 1 is displayed.
             //                     For INSTRPOPUP, animation repeats until cancelled.
 
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationPopUp");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-PopUp");
  #endif
             do {    // INSTRPOPUP loops forever, others just once through
                 int synccount = 0;
@@ -2249,8 +2251,8 @@ void *animation_thread(void *arg) {
         } break;
 
         case ANIMWHACKED: {
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationWhacked");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-Whack");
  #endif
             lock_molecomm();
             aspec->synccount = 1;  // Indicate animation running
@@ -2297,8 +2299,8 @@ void *animation_thread(void *arg) {
         } break;
 
         case ANIMESCAPED: {
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationEscaped");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-Escape");
  #endif
             lock_molecomm();
             aspec->synccount = 1;  // Indicate animation running
@@ -2362,8 +2364,8 @@ void *animation_thread(void *arg) {
         } break;
 
         case ANIMMISFIRESCARED: { // Shows misfire on hole where mole was hiding
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationMisfireScared");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-Scare1");
  #endif
             lock_molecomm();
             aspec->synccount = 1;  // Indicate animation running
@@ -2443,105 +2445,10 @@ void *animation_thread(void *arg) {
             unlock_molecomm();
         } break;
 
-        case ANIMHIDESCARED: { // Hiding mole scared off by misfire on other hole
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationHidingScared");
- #endif
-            lock_molecomm();
-            aspec->synccount = 1;  // Indicate animation running
-            unlock_molecomm();
-
-            int frametime = 30; // msec
-            sleeptime.tv_sec = frametime / 1000;
-            sleeptime.tv_nsec = (frametime % 1000) * MSEC; 
-            int i;
-            for (i=1; i<=5; i++) {
-                disable_thread_cancel(); // don't get cancelled while holding a lock
-                lock_ncurses();
-                show_mole(aspec->hole, aspec->numholes, i); // Mole popping up
-                refresh();
-                unlock_ncurses();
-                enable_thread_cancel();
-                nanosleep(&sleeptime, NULL);
-            }
-
-            frametime = 50; // msec (to bring remainder of animation into sync with other SCARED animn.
-            sleeptime.tv_sec = frametime / 1000;
-            sleeptime.tv_nsec = (frametime % 1000) * MSEC; 
-            disable_thread_cancel(); // don't get cancelled while holding a lock
-            lock_ncurses();
-
-            show_result(aspec->hole, aspec->numholes, -1, 0, 0, "");
-            refresh();
-            unlock_ncurses();
-            enable_thread_cancel();
-            nanosleep(&sleeptime, NULL);
-
-            frametime = aspec->duration / 20;
-            sleeptime.tv_sec = frametime / 1000;
-            sleeptime.tv_nsec = (frametime % 1000) * MSEC; 
-            for (i=0; i<2; i++) {
-                disable_thread_cancel(); // don't get cancelled while holding a lock
-                lock_ncurses();
-
-                show_result(aspec->hole, aspec->numholes, -1, 0, 0, "!SCARED!");
-                refresh();
-                unlock_ncurses();
-                enable_thread_cancel();
-                nanosleep(&sleeptime, NULL);
-
-                disable_thread_cancel(); // don't get cancelled while holding a lock
-                lock_ncurses();
-
-                show_result(aspec->hole, aspec->numholes, -1, 0, 0, "");
-                refresh();
-                unlock_ncurses();
-                enable_thread_cancel();
-                nanosleep(&sleeptime, NULL);
-            }
-
-            frametime = aspec->duration * 5 / 10;
-            sleeptime.tv_sec = frametime / 1000;
-            sleeptime.tv_nsec = (frametime % 1000) * MSEC; 
-            disable_thread_cancel(); // don't get cancelled while holding a lock
-            lock_ncurses();
-
-            show_result(aspec->hole, aspec->numholes, SCAREDOFF, 0, 0, NULL);
-            refresh();
-            unlock_ncurses();
-            enable_thread_cancel();
-            nanosleep(&sleeptime, NULL);
-
-            frametime = aspec->duration * 2 / 10;
-            sleeptime.tv_sec = frametime / 1000;
-            sleeptime.tv_nsec = (frametime % 1000) * MSEC; 
-            disable_thread_cancel(); // don't get cancelled while holding a lock
-            lock_ncurses();
-
-            show_result(aspec->hole, aspec->numholes, -1, 0, 0, "!SCARED!");
-            refresh();
-            unlock_ncurses();
-            enable_thread_cancel();
-            nanosleep(&sleeptime, NULL);
-
-            // Blank after animation
-            disable_thread_cancel(); // don't get cancelled while holding a lock
-            lock_ncurses();
-
-            show_result(aspec->hole, aspec->numholes, -1, 0, 0, "");  // Blank out hole
-
-            refresh();
-            unlock_ncurses();
-            enable_thread_cancel();
-            lock_molecomm();
-            aspec->synccount = 2;  // Indicate animation complete
-            unlock_molecomm();
-        } break;
-
         case INSTRSCARED:    // Scared animation from instructions page.
         case ANIMUPSCARED: { // UP mole scared off by missfire on other hole.
- #if defined(debug)
-            pthread_setname_np(pthread_self(), "AnimationUpScared");
+ #if defined(debug) && defined(_GNU_SOURCE)
+            pthread_setname_np(pthread_self(), "WAM-Anim-Scare2");
  #endif
             lock_molecomm();
             aspec->synccount = 1;  // Indicate animation running
@@ -2670,8 +2577,8 @@ void *display_thread(void *arg){
     int knownscores = 0;
     int err;
 
- #if defined(debug)
-    pthread_setname_np(pthread_self(), "Display");
+ #if defined(debug) && defined(_GNU_SOURCE)
+    pthread_setname_np(pthread_self(), "WAM-Display");
  #endif
 
     memset(newmolecomm, 0, sizeof(newmolecomm));
@@ -3133,8 +3040,8 @@ void *input_thread(void *arg) {
     char inputkey;
     long msec;
     int err;
- #if defined(debug)
-    pthread_setname_np(pthread_self(), "Input");
+ #if defined(debug) && defined(_GNU_SOURCE)
+    pthread_setname_np(pthread_self(), "WAM-Input");
  #endif
 
     if ((err = pthread_mutex_lock(&start_mtx)) != 0) {   // set up mutex for cond wait
